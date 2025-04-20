@@ -10,7 +10,6 @@ auth_router.post("/", async (req, res) => {
     `SELECT * FROM ${tableName} WHERE username = ? and password = ?;`,
     [username, password]
   );
-  console.log(isValid);
   if (isValid.length > 0) {
     res.status(200).json({
       success: true,
