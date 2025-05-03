@@ -8,11 +8,17 @@ services:
     depends_on:
       - ml
       - db
+    networks:
+      - ending_project
 
   ml:
     build: ./ml
     ports:
-      - "8001:8001"
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - ending_project
 
   db:
     image: mysql:latest
@@ -26,14 +32,12 @@ services:
     volumes:
       - ./database/db_data:/var/lib/mysql
       - ./database/db_data:/docker-entrypoint-initdb.d
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
+    networks:
+      - ending_project
 
 volumes:
   db_data:
+
+networks:
+  ending_project:
+    driver: bridge
