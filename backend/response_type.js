@@ -1,5 +1,5 @@
 export const sendResponse = (res, data, emptyMessage = "Kayıt bulunamadı!") => {
-  if (!data || data.length === 0) {
+  if (!data) {
     return res.status(404).json({
       success: false,
       data: [],

@@ -6,16 +6,6 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - ml
-      - db
-    networks:
-      - ending_project
-
-  ml:
-    build: ./ml
-    ports:
-      - "5000:5000"
-    depends_on:
       - db
     networks:
       - ending_project

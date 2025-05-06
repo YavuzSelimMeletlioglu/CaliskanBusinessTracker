@@ -10,7 +10,7 @@ operation_router.get("/incomings", async (req, res) => {
       SELECT 
         c.name AS company_name,
         p.name AS product_name,
-        i.company_id AS comp_id,
+        i.company_id,
         i.product_id,
         i.quantity,
         i.created_at
@@ -30,16 +30,15 @@ operation_router.get("/processes", async (req, res) => {
   try {
     const [result] = await pool.query(`
       SELECT 
+        pr.company_id,
+        pr.product_id,
         c.name AS company_name,
         p.name AS product_name,
-        inc.company_id AS comp_id,
-        inc.product_id,
         pr.quantity,
         pr.created_at
       FROM process pr
-      JOIN incoming inc ON pr.incoming_id = inc.id
-      JOIN companies c ON inc.company_id = c.id
-      JOIN products p ON inc.product_id = p.id
+      JOIN companies c ON pr.company_id = c.id
+      JOIN products p ON pr.product_id = p.id
       ORDER BY pr.created_at ASC
     `);
     sendResponse(res, result);
@@ -55,15 +54,13 @@ operation_router.get("/stores", async (req, res) => {
       SELECT 
         c.name AS company_name,
         p.name AS product_name,
-        inc.company_id AS comp_id,
-        inc.product_id,
+        s.company_id AS comp_id,
+        s.product_id,
         s.quantity,
         s.created_at
       FROM store s
-      JOIN process pr ON s.process_id = pr.id
-      JOIN incoming inc ON pr.incoming_id = inc.id
-      JOIN companies c ON inc.company_id = c.id
-      JOIN products p ON inc.product_id = p.id
+      JOIN companies c ON s.company_id = c.id
+      JOIN products p ON s.product_id = p.id
       ORDER BY s.created_at ASC
     `);
     sendResponse(res, result);
@@ -101,17 +98,17 @@ operation_router.post("/incomings", async (req, res) => {
 
 operation_router.post("/processes", async (req, res) => {
   try {
-    const { incoming_id, quantity } = req.body;
+    const { company_id, product_id, quantity } = req.body;
 
-    if (!incoming_id || !quantity) {
+    if (!product_id || !company_id || !quantity) {
       return res
         .status(400)
         .json({ success: false, message: "Eksik bilgi gönderildi!" });
     }
 
     const [result] = await pool.query(
-      `INSERT INTO process (incoming_id, quantity) VALUES (?, ?)`,
-      [incoming_id, quantity]
+      `INSERT INTO process (company_id, product_id, quantity) VALUES (?, ?, ?)`,
+      [company_id, product_id, quantity]
     );
 
     res.status(201).json({
@@ -125,20 +122,18 @@ operation_router.post("/processes", async (req, res) => {
   }
 });
 
-// Store ekleme
 operation_router.post("/stores", async (req, res) => {
   try {
-    const { process_id, quantity } = req.body;
-
-    if (!process_id || !quantity) {
+    const { company_id, product_id, quantity } = req.body;
+    if (!company_id || !product_id || !quantity) {
       return res
         .status(400)
         .json({ success: false, message: "Eksik bilgi gönderildi!" });
     }
 
     const [result] = await pool.query(
-      `INSERT INTO store (process_id, quantity) VALUES (?, ?)`,
-      [process_id, quantity]
+      `INSERT INTO store (company_id, product_id, quantity) VALUES (?, ?, ?)`,
+      [company_id, product_id, quantity]
     );
 
     res.status(201).json({
@@ -148,6 +143,57 @@ operation_router.post("/stores", async (req, res) => {
     });
   } catch (error) {
     console.error("Store ekleme hatası:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası!" });
+  }
+});
+
+operation_router.delete("/stores", async (req, res) => {
+  try {
+    const { company_id, product_id, quantity } = req.body;
+    console.error(company_id, " ", product_id, " ", quantity);
+    if (!company_id || !product_id || !quantity) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Eksik bilgi gönderildi!" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT quantity FROM store WHERE company_id = ? AND product_id = ? ORDER BY created_at ASC LIMIT 1",
+      [company_id, product_id]
+    );
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kayıt bulunamadı!" });
+    }
+
+    const currentQuantity = rows[0].quantity;
+    const newQuantity = currentQuantity - quantity;
+
+    if (newQuantity <= 0) {
+      await pool.query(
+        "DELETE FROM store WHERE company_id = ? AND product_id = ? ORDER BY created_at ASC LIMIT 1",
+        [company_id, product_id]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Store silindi, çünkü miktar 0'ın altına düştü.",
+      });
+    } else {
+      await pool.query(
+        "UPDATE store SET quantity = ? WHERE company_id = ? AND product_id = ? ORDER BY created_at ASC LIMIT 1",
+        [newQuantity, company_id, product_id]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Store miktarı güncellendi.",
+        newQuantity,
+      });
+    }
+  } catch (error) {
+    console.error("Store silme/güncelleme hatası:", error);
     res.status(500).json({ success: false, message: "Sunucu hatası!" });
   }
 });

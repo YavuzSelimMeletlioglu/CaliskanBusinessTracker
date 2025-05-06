@@ -16,7 +16,7 @@ app.use("/auth", auth_router);
 app.use("/products", product_router);
 app.use("/companies", company_router);
 app.use("/", movement_router);
-app.use("/", assignment_router);
+app.use("/assignments", assignment_router);
 app.use("/operations", operation_router);
 
 app.post("/tahmin", async (req, res) => {
