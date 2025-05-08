@@ -54,7 +54,7 @@ operation_router.get("/stores", async (req, res) => {
       SELECT 
         c.name AS company_name,
         p.name AS product_name,
-        s.company_id AS comp_id,
+        s.company_id AS company_id,
         s.product_id,
         s.quantity,
         s.created_at
@@ -150,7 +150,6 @@ operation_router.post("/stores", async (req, res) => {
 operation_router.delete("/stores", async (req, res) => {
   try {
     const { company_id, product_id, quantity } = req.body;
-    console.error(company_id, " ", product_id, " ", quantity);
     if (!company_id || !product_id || !quantity) {
       return res
         .status(400)

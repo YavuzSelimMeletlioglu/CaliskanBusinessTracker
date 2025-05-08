@@ -95,7 +95,6 @@ total_operation_router.post("/total-outgoings", async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Çıkış verisi başarıyla eklendi.",
-      total_incoming_id,
     });
   } catch (error) {
     console.error("Çıkış ekleme hatası:", error);
@@ -221,9 +220,7 @@ total_operation_router.get("/net-graph-data", async (req, res) => {
       });
     }
 
-    let groupFormat;
-    let dateCondition;
-
+    let groupFormat, dateCondition;
     if (type === "monthly") {
       groupFormat = "%Y-%m";
       dateCondition =
@@ -242,7 +239,7 @@ total_operation_router.get("/net-graph-data", async (req, res) => {
       `
       SELECT 
         label,
-        SUM(outgoing_mass) - SUM(incoming_mass) AS net_mass
+        GREATEST(SUM(outgoing_mass) - SUM(incoming_mass), 0) AS net_mass
       FROM (
         SELECT 
           DATE_FORMAT(ti.created_at, ?) AS label,
@@ -254,7 +251,7 @@ total_operation_router.get("/net-graph-data", async (req, res) => {
           ) AS outgoing_mass
         FROM total_incoming ti
         WHERE ti.company_id = ?
-          ${dateCondition}
+        ${dateCondition}
       ) AS subquery
       GROUP BY label
       ORDER BY label ASC
@@ -266,7 +263,6 @@ total_operation_router.get("/net-graph-data", async (req, res) => {
       label: row.label,
       value: row.net_mass,
     }));
-
     sendResponse(res, formattedResult);
   } catch (error) {
     console.error("Net graph data fetch error:", error);
@@ -278,26 +274,24 @@ total_operation_router.get(
   "/incoming-graph-data-by-product",
   async (req, res) => {
     try {
-      const { product_id, type } = req.query;
+      const { company_id, type } = req.query;
 
-      if (!product_id || !type) {
+      if (!company_id || !type) {
         return res.status(400).json({
           success: false,
-          message: "product_id ve type (monthly/yearly) gereklidir.",
+          message: "company_id ve type (monthly/yearly) gereklidir.",
         });
       }
 
-      let groupFormat;
-      let dateCondition;
-
+      let groupFormat, dateCondition;
       if (type === "monthly") {
         groupFormat = "%Y-%m";
         dateCondition =
-          "AND created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+          "AND ti.created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
       } else if (type === "yearly") {
         groupFormat = "%Y";
         dateCondition =
-          "AND created_at >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)";
+          "AND ti.created_at >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)";
       } else {
         return res
           .status(400)
@@ -306,16 +300,17 @@ total_operation_router.get(
 
       const [result] = await pool.query(
         `
-      SELECT 
-        DATE_FORMAT(created_at, ?) AS label,
-        SUM(mass) AS value
-      FROM total_incoming
-      WHERE product_id = ?
+      SELECT
+        p.name AS label,
+        SUM(ti.mass) AS value
+      FROM total_incoming ti
+      JOIN products p ON ti.product_id = p.id
+      WHERE ti.company_id = ?
       ${dateCondition}
       GROUP BY label
       ORDER BY label ASC
       `,
-        [groupFormat, product_id]
+        [company_id]
       );
 
       sendResponse(res, result);
@@ -330,18 +325,16 @@ total_operation_router.get(
   "/outgoing-graph-data-by-product",
   async (req, res) => {
     try {
-      const { product_id, type } = req.query;
+      const { company_id, type } = req.query;
 
-      if (!product_id || !type) {
+      if (!company_id || !type) {
         return res.status(400).json({
           success: false,
-          message: "product_id ve type (monthly/yearly) gereklidir.",
+          message: "company_id ve type (monthly/yearly) gereklidir.",
         });
       }
 
-      let groupFormat;
-      let dateCondition;
-
+      let groupFormat, dateCondition;
       if (type === "monthly") {
         groupFormat = "%Y-%m";
         dateCondition =
@@ -358,16 +351,17 @@ total_operation_router.get(
 
       const [result] = await pool.query(
         `
-      SELECT 
-        DATE_FORMAT(to2.created_at, ?) AS label,
+      SELECT
+        p.name AS label,
         SUM(to2.mass) AS value
       FROM total_outgoing to2
-      WHERE to2.product_id = ?
+      JOIN products p ON to2.product_id = p.id
+      WHERE to2.company_id = ?
       ${dateCondition}
       GROUP BY label
       ORDER BY label ASC
       `,
-        [groupFormat, product_id]
+        [company_id]
       );
 
       sendResponse(res, result);
@@ -380,26 +374,22 @@ total_operation_router.get(
 
 total_operation_router.get("/net-graph-data-by-product", async (req, res) => {
   try {
-    const { product_id, type } = req.query;
-
-    if (!product_id || !type) {
+    const { company_id, type } = req.query;
+    if (!company_id || !type) {
       return res.status(400).json({
         success: false,
-        message: "product_id ve type (monthly/yearly) gereklidir.",
+        message: "company_id ve type (monthly/yearly) gereklidir.",
       });
     }
 
-    let groupFormat;
-    let dateCondition;
-
+    let groupFormat, dateCondition;
     if (type === "monthly") {
       groupFormat = "%Y-%m";
       dateCondition =
-        "AND ti.created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+        "AND created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
     } else if (type === "yearly") {
       groupFormat = "%Y";
-      dateCondition =
-        "AND ti.created_at >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)";
+      dateCondition = "AND created_at >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)";
     } else {
       return res
         .status(400)
@@ -410,24 +400,32 @@ total_operation_router.get("/net-graph-data-by-product", async (req, res) => {
       `
       SELECT 
         label,
-        SUM(outgoing_mass) - SUM(incoming_mass) AS net_mass
+        GREATEST(SUM(incoming_mass) - SUM(outgoing_mass), 0) AS net_mass
       FROM (
         SELECT 
-          DATE_FORMAT(ti.created_at, ?) AS label,
+          p.name AS label,
           ti.mass AS incoming_mass,
-          (
-            SELECT IFNULL(SUM(to2.mass), 0)
-            FROM total_outgoing to2
-            WHERE to2.product_id = ?
-          ) AS outgoing_mass
+          0 AS outgoing_mass
         FROM total_incoming ti
-        WHERE ti.product_id = ?
-          ${dateCondition}
-      ) AS subquery
+        JOIN products p ON ti.product_id = p.id
+        WHERE ti.company_id = ?
+        ${dateCondition}
+        
+        UNION ALL
+        
+        SELECT 
+          p.name AS label,
+          0 AS incoming_mass,
+          to2.mass AS outgoing_mass
+        FROM total_outgoing to2
+        JOIN products p ON to2.product_id = p.id
+        WHERE to2.company_id = ?
+        ${dateCondition}
+      ) AS combined
       GROUP BY label
       ORDER BY label ASC
       `,
-      [groupFormat, product_id, product_id]
+      [company_id, company_id]
     );
 
     const formattedResult = result.map((row) => ({
