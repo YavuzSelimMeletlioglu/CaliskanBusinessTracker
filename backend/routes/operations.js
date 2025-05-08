@@ -1,5 +1,6 @@
 import express from "express";
 import pool from "../config/db.js";
+import axios from "axios";
 import { sendResponse } from "../response_type.js";
 
 const operation_router = express.Router();
@@ -111,6 +112,24 @@ operation_router.post("/processes", async (req, res) => {
       [company_id, product_id, quantity]
     );
 
+    const response = await axios.post("http://ml:5000/predict", {
+      product_id,
+      company_id,
+      quantity,
+    });
+
+    const predicted_duration = Math.round(response.data.predicted_duration);
+
+    await pool.query(
+      `UPDATE performance_logs
+       SET acid_pool_time_minutes = ?
+       WHERE company_id = ? AND product_id = ? 
+       AND end_time IS NULL 
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [predicted_duration, company_id, product_id]
+    );
+
     res.status(201).json({
       success: true,
       message: "Process başarıyla eklendi.",
@@ -125,6 +144,7 @@ operation_router.post("/processes", async (req, res) => {
 operation_router.post("/stores", async (req, res) => {
   try {
     const { company_id, product_id, quantity } = req.body;
+
     if (!company_id || !product_id || !quantity) {
       return res
         .status(400)
@@ -135,6 +155,20 @@ operation_router.post("/stores", async (req, res) => {
       `INSERT INTO store (company_id, product_id, quantity) VALUES (?, ?, ?)`,
       [company_id, product_id, quantity]
     );
+
+    const [logCountResult] = await pool.query(
+      `SELECT COUNT(*) AS total FROM performance_logs`
+    );
+
+    const totalLogs = logCountResult[0].total;
+
+    if (totalLogs % 5 === 0) {
+      try {
+        await axios.post("http://ml:5000/train");
+      } catch (trainError) {
+        console.error("Model eğitilirken hata oluştu:", trainError.message);
+      }
+    }
 
     res.status(201).json({
       success: true,
