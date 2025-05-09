@@ -7,6 +7,7 @@ import movement_router from "./routes/movement.js";
 import assignment_router from "./routes/assignments.js";
 import operation_router from "./routes/operations.js";
 import pool_router from "./routes/pool_router.js";
+import performance_router from "./routes/performance.js";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,7 @@ app.use("/", movement_router);
 app.use("/assignments", assignment_router);
 app.use("/operations", operation_router);
 app.use("/pools", pool_router);
+app.use("/performance", performance_router);
 
 app.listen(3000, () => {
   console.log("Node.js backend 3000 portunda çalışıyor");

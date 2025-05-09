@@ -1,5 +1,6 @@
 import express from "express";
 import pool from "../config/db.js";
+import { sendResponse } from "../response_type.js";
 
 const performance_router = express.Router();
 
@@ -10,7 +11,7 @@ performance_router.get("/worst-5", async (req, res) => {
     c.name AS company_name,
     pl.quantity,
     pl.total_time_minutes,
-    (pl.total_time_minutes / pl.quantity) AS avg_minutes_per_unit
+    ROUND(pl.total_time_minutes / pl.quantity, 2) AS avg_minutes_per_unit
     FROM performance_logs pl
     JOIN products p ON pl.product_id = p.id
     JOIN companies c ON pl.company_id = c.id
@@ -20,7 +21,6 @@ performance_router.get("/worst-5", async (req, res) => {
     ORDER BY avg_minutes_per_unit DESC
     LIMIT 5;
 `);
-
   sendResponse(res, result);
 });
 
@@ -31,7 +31,7 @@ performance_router.get("/best-5", async (req, res) => {
       c.name AS company_name,
       pl.quantity,
       pl.total_time_minutes,
-      (pl.total_time_minutes / pl.quantity) AS avg_minutes_per_unit
+      ROUND(pl.total_time_minutes / pl.quantity, 2) AS avg_minutes_per_unit
       FROM performance_logs pl
       JOIN products p ON pl.product_id = p.id
       JOIN companies c ON pl.company_id = c.id
@@ -41,7 +41,6 @@ performance_router.get("/best-5", async (req, res) => {
       ORDER BY avg_minutes_per_unit ASC
       LIMIT 5;
   `);
-
   sendResponse(res, result);
 });
 
