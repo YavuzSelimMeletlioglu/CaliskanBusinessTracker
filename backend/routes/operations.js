@@ -133,7 +133,7 @@ operation_router.post("/processes", async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Process başarıyla eklendi.",
-      id: result.insertId,
+      bath_time: predicted_duration,
     });
   } catch (error) {
     console.error("Process ekleme hatası:", error);
