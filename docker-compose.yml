@@ -31,9 +31,6 @@ services:
       MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
-    volumes:
-      - ./database/db_data:/var/lib/mysql
-      - ./database/db_data:/docker-entrypoint-initdb.d
     networks:
       - ending_project
     restart: always
