@@ -163,16 +163,14 @@ assignment_router.post("/update-quantity", async (req, res) => {
 
 assignment_router.delete("/", async (req, res) => {
   try {
-    const { assignment_id, quantity } = req.body;
+    const { assignment_id } = req.body;
 
-    if (!assignment_id || !quantity) {
+    if (!assignment_id) {
       return res
         .status(400)
         .json({ success: false, message: "Eksik bilgi gönderildi!" });
     }
-    await pool.query("DELETE FROM assignment WHERE assignment_id = ?", [
-      assignment_id,
-    ]);
+    await pool.query("DELETE FROM assignment WHERE id = ?", [assignment_id]);
 
     return res.status(200).json({
       success: true,

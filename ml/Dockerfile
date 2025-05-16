@@ -22,7 +22,8 @@ RUN pip install --no-cache-dir \
     numpy \
     scikit-learn \
     pandas \
-    gunicorn
+    gunicorn \
+    RPi.GPIO
 
 EXPOSE 5000
 
