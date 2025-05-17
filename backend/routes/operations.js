@@ -112,7 +112,7 @@ operation_router.post("/processes", async (req, res) => {
       [company_id, product_id, quantity]
     );
 
-    const response = await axios.post("http://ml:5000/predict", {
+    const response = await axios.post("http://ml:5000/ml/predict", {
       product_id,
       company_id,
       quantity,
@@ -164,7 +164,7 @@ operation_router.post("/stores", async (req, res) => {
 
     if (totalLogs % 5 === 0) {
       try {
-        await axios.post("http://ml:5000/train");
+        await axios.post("http://ml:5000/ml/train");
       } catch (trainError) {
         console.error("Model eğitilirken hata oluştu:", trainError.message);
       }

@@ -1,15 +1,21 @@
-from flask import Flask, request
+from flask import Blueprint, request
 import RPi.GPIO as GPIO
 import time
 
-app = Flask(__name__)
+motor_bp = Blueprint('motor', __name__)
 GPIO.setmode(GPIO.BCM)
 
-# --- Step Motor (Yatay taşıma) ---
+# Motor pinleri ve setup
 step_pins = [17, 18, 27, 22]
+motor_dip_pin = 23
+steps_per_pool = 512
+current_position = 0
+
 for pin in step_pins:
     GPIO.setup(pin, GPIO.OUT)
     GPIO.output(pin, False)
+GPIO.setup(motor_dip_pin, GPIO.OUT)
+GPIO.output(motor_dip_pin, GPIO.LOW)
 
 step_seq = [
     [1,0,0,1],
@@ -21,14 +27,6 @@ step_seq = [
     [0,0,1,1],
     [0,0,0,1]
 ]
-
-motor_dip_pin = 23
-GPIO.setup(motor_dip_pin, GPIO.OUT)
-GPIO.output(motor_dip_pin, GPIO.LOW)
-
-# --- Ayarlar ---
-steps_per_pool = 512
-current_position = 0
 
 def rotate_step_motor(steps=512, delay=0.002, direction=1):
     seq = step_seq if direction == 1 else list(reversed(step_seq))
@@ -44,7 +42,7 @@ def dip_and_lift():
     GPIO.output(motor_dip_pin, GPIO.LOW)
     time.sleep(2)
 
-@app.route("/move", methods=["GET"])
+@motor_bp.route('/move', methods=['GET'])
 def move_from_to():
     global current_position
 
@@ -54,41 +52,32 @@ def move_from_to():
     if from_pos is None or to_pos is None:
         return "from ve to parametreleri zorunludur!", 400
 
-    try:
-        from_pos = int(from_pos)
-        to_pos = int(to_pos)
-    except ValueError:
-        return "from ve to parametreleri tam sayı olmalıdır!", 400
+    from_pos = int(from_pos)
+    to_pos = int(to_pos)
 
-    if from_pos < 0 or to_pos < 0 or from_pos > 5 or to_pos > 5:
-        return "Pozisyonlar 0-5 arası olmalıdır (4 havuz + 2 bekleme).", 400
-
-    steps_to_from = abs(from_pos - current_position) * steps_per_pool
+    # move from
+    steps = abs(from_pos - current_position) * steps_per_pool
     direction = 1 if from_pos > current_position else 0
-    rotate_step_motor(steps=steps_to_from, direction=direction)
+    rotate_step_motor(steps, direction)
     current_position = from_pos
-
     dip_and_lift()
 
-    steps_to_to = abs(to_pos - current_position) * steps_per_pool
+    # move to
+    steps = abs(to_pos - current_position) * steps_per_pool
     direction = 1 if to_pos > current_position else 0
-    rotate_step_motor(steps=steps_to_to, direction=direction)
+    rotate_step_motor(steps, direction)
     current_position = to_pos
-
     dip_and_lift()
 
-    return f"Ürün {from_pos} → {to_pos} başarıyla taşındı ve işlendi."
+    return f"Motor {from_pos} → {to_pos} taşıdı."
 
-@app.route("/reset-position")
-def reset_position():
+@motor_bp.route('/reset-position')
+def reset_pos():
     global current_position
     current_position = 0
-    return "Pozisyon sıfırlandı (0)."
+    return "Pozisyon sıfırlandı."
 
-@app.route("/cleanup")
+@motor_bp.route('/cleanup')
 def cleanup():
     GPIO.cleanup()
     return "GPIO temizlendi."
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
