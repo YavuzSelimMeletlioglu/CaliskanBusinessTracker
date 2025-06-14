@@ -4,28 +4,6 @@ import { sendResponse } from "../response_type.js";
 
 const total_operation_router = express.Router();
 
-total_operation_router.get("/total-incomings", async (req, res) => {
-  try {
-    const [result] = await pool.query(`
-      SELECT 
-        c.name AS company_name,
-        p.name AS product_name,
-        ti.company_id,
-        ti.product_id,
-        ti.mass,
-        ti.created_at
-      FROM total_incoming ti
-      JOIN companies c ON ti.company_id = c.id
-      JOIN products p ON ti.product_id = p.id
-      ORDER BY ti.created_at ASC
-    `);
-    sendResponse(res, result);
-  } catch (error) {
-    console.error("Total incomings fetch error:", error);
-    res.status(500).json({ success: false, message: "Sunucu hatası!" });
-  }
-});
-
 total_operation_router.post("/total-incomings", async (req, res) => {
   try {
     const { company_id, product_id, mass } = req.body;
@@ -48,29 +26,6 @@ total_operation_router.post("/total-incomings", async (req, res) => {
     });
   } catch (error) {
     console.error("Total incoming ekleme hatası:", error);
-    res.status(500).json({ success: false, message: "Sunucu hatası!" });
-  }
-});
-
-total_operation_router.get("/total-outgoings", async (req, res) => {
-  try {
-    const [result] = await pool.query(`
-      SELECT 
-        c.name AS company_name,
-        p.name AS product_name,
-        ti.company_id,
-        ti.product_id,
-        to2.mass,
-        to2.created_at
-      FROM total_outgoing to2
-      JOIN total_incoming ti ON to2.total_incoming_id = ti.id
-      JOIN companies c ON ti.company_id = c.id
-      JOIN products p ON ti.product_id = p.id
-      ORDER BY to2.created_at ASC
-    `);
-    sendResponse(res, result);
-  } catch (error) {
-    console.error("Total outgoings fetch error:", error);
     res.status(500).json({ success: false, message: "Sunucu hatası!" });
   }
 });

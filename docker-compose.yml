@@ -15,7 +15,7 @@ services:
   ml:
     build: ./ml
     ports:
-      - "8001:5000"
+      - "5001:5001"
     depends_on:
       - db
     networks:
@@ -31,6 +31,9 @@ services:
       MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
+    volumes:
+      - ./database/db_data:/var/lib/mysql
+      - ./database/db_data:/docker-entrypoint-initdb.d
     networks:
       - ending_project
     restart: always
@@ -40,4 +43,4 @@ volumes:
 
 networks:
   ending_project:
-    driver: bridge
+    external: true

@@ -1,3 +1,4 @@
+"""
 from flask import Flask, request, jsonify
 import pickle
 import numpy as np
@@ -19,11 +20,11 @@ def train():
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
 
-        cursor.execute("""
+        cursor.execute(""
             SELECT product_id, company_id, quantity, acid_pool_time_minutes
             FROM performance_logs
             WHERE acid_pool_time_minutes IS NOT NULL
-        """)
+        "")
         records = cursor.fetchall()
 
         cursor.close()
@@ -35,7 +36,9 @@ def train():
         X = np.array([[r['product_id'], r['company_id'], r['quantity']] for r in records])
         y = np.array([r['acid_pool_time_minutes'] for r in records])
 
-        model = LinearRegression()
+        with open('duration_predictor.pkl', 'rb') as f:
+            model = pickle.load(f)
+
         model.fit(X, y)
 
         with open('duration_model.pkl', 'wb') as f:
@@ -67,3 +70,4 @@ def predict():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+"""

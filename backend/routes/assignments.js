@@ -34,17 +34,15 @@ assignment_router.get("/", async (req, res) => {
   }
 });
 
-assignment_router.post("/filter-strict", async (req, res) => {
+assignment_router.post("/get-product-assignments", async (req, res) => {
   try {
     const { company_id, product_id } = req.body;
-
     if (!company_id || !product_id) {
       return res.status(400).json({
         success: false,
-        message: "company_id, product_id, quantity ve created_at zorunludur.",
+        message: "company_id, product_id zorunludur.",
       });
     }
-    console.log(req.body);
     const [result] = await pool.query(
       `
       SELECT 
@@ -103,7 +101,6 @@ assignment_router.post("/add-assignment", async (req, res) => {
   try {
     const { company_id, product_id, quantity, user_id, last_date_completion } =
       req.body;
-    console.log(req.body);
     if (!company_id || !product_id || !quantity || !user_id) {
       return res
         .status(400)
@@ -161,6 +158,96 @@ assignment_router.post("/update-quantity", async (req, res) => {
   }
 });
 
+assignment_router.post("/recommendation", async (req, res) => {
+  try {
+    const [users] = await pool.query(
+      `SELECT id, name FROM users WHERE role = 4`
+    );
+
+    if (users.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: "Uygun kullanıcı bulunamadı.",
+      });
+    }
+
+    const userWorkloads = [];
+
+    for (const user of users) {
+      const [assignments] = await pool.query(
+        `SELECT 
+          product_id, 
+          company_id, 
+          (quantity - COALESCE(completed_quantity, 0)) AS remaining_quantity
+         FROM assignment
+         WHERE user_id = ? 
+         AND (last_date_completion IS NULL OR last_date_completion > NOW())
+         AND (quantity - COALESCE(completed_quantity, 0)) > 0`,
+        [user.id]
+      );
+
+      let total_estimated_time = 0;
+      let total_remaining_tasks = 0;
+
+      for (const assignment of assignments) {
+        const [[perf]] = await pool.query(
+          `SELECT AVG(acid_pool_time_minutes / quantity) AS avg_time_per_unit
+           FROM performance_logs
+           WHERE product_id = ? AND company_id = ? 
+           AND acid_pool_time_minutes IS NOT NULL 
+           AND quantity > 0`,
+          [assignment.product_id, assignment.company_id]
+        );
+
+        const avg_time_per_unit = perf?.avg_time_per_unit || 0;
+
+        if (avg_time_per_unit > 0) {
+          total_estimated_time +=
+            assignment.remaining_quantity * avg_time_per_unit;
+        }
+
+        total_remaining_tasks += assignment.remaining_quantity;
+      }
+
+      const final_workload = total_estimated_time;
+
+      userWorkloads.push({
+        user_id: user.id,
+        user_name: user.name,
+        total_remaining_tasks: total_remaining_tasks,
+        estimated_workload_minutes: Math.round(final_workload),
+        active_assignments_count: assignments.length,
+      });
+    }
+
+    userWorkloads.sort(
+      (a, b) => a.estimated_workload_minutes - b.estimated_workload_minutes
+    );
+
+    if (userWorkloads.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: "Kullanıcı iş yükü hesaplanamadı.",
+      });
+    }
+
+    const bestUser = userWorkloads[0];
+
+    res.json({
+      success: true,
+      data: {
+        user_id: bestUser.user_id,
+      },
+      message: "En müsait kullanıcı bulundu.",
+    });
+  } catch (error) {
+    console.error("Çalışan önerisi hatası:", error);
+    res.status(500).json({ success: false, message: "Sunucu hatası" });
+  }
+});
+
 assignment_router.delete("/", async (req, res) => {
   try {
     const { assignment_id } = req.body;
@@ -174,10 +261,10 @@ assignment_router.delete("/", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Store silindi, çünkü miktar 0'ın altına düştü.",
+      message: "İş ataması silindi.",
     });
   } catch (error) {
-    console.error("Store silme/güncelleme hatası:", error);
+    console.error("İş ataması silme hatası:", error);
     res.status(500).json({ success: false, message: "Sunucu hatası!" });
   }
 });

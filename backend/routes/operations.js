@@ -2,6 +2,8 @@ import express from "express";
 import pool from "../config/db.js";
 import axios from "axios";
 import { sendResponse } from "../response_type.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 const operation_router = express.Router();
 
@@ -112,11 +114,14 @@ operation_router.post("/processes", async (req, res) => {
       [company_id, product_id, quantity]
     );
 
-    const response = await axios.post("http://ml:5000/ml/predict", {
-      product_id,
-      company_id,
-      quantity,
-    });
+    const response = await axios.post(
+      `http://ml:${process.env.MLPORT}/ml/predict`,
+      {
+        product_id,
+        company_id,
+        quantity,
+      }
+    );
 
     const predicted_duration = Math.round(response.data.predicted_duration);
 
@@ -164,7 +169,7 @@ operation_router.post("/stores", async (req, res) => {
 
     if (totalLogs % 5 === 0) {
       try {
-        await axios.post("http://ml:5000/ml/train");
+        await axios.post(`http://ml:${process.env.MLPORT}/ml/train`);
       } catch (trainError) {
         console.error("Model eğitilirken hata oluştu:", trainError.message);
       }
@@ -211,7 +216,7 @@ operation_router.delete("/stores", async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: "Store silindi, çünkü miktar 0'ın altına düştü.",
+        message: "Kayıt silindi.",
       });
     } else {
       await pool.query(

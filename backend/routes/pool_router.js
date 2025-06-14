@@ -1,6 +1,8 @@
 import express from "express";
 import pool from "../config/db.js";
 import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
 
 const pool_router = express.Router();
 
@@ -41,7 +43,7 @@ pool_router.post("/assign-to-pool", async (req, res) => {
 
     // Motoru çağır
     try {
-      await axios.get("http://ml:5000/motor/move", {
+      await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
         params: { from: 0, to: pool_number },
       });
     } catch (motorError) {
@@ -75,9 +77,8 @@ pool_router.post("/release-pool", async (req, res) => {
       [pool_number]
     );
 
-    // Boşaltılan ürün kurutma alanına taşınmalı
     try {
-      await axios.get("http://ml:5000/motor/move", {
+      await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
         params: { from: pool_number, to: 5 }, // 5 = kurutma bölgesi
       });
     } catch (motorError) {
@@ -120,7 +121,6 @@ pool_router.get("/empty-pool", async (req, res) => {
   }
 });
 
-// === ZAMANLAYICI ===
 setInterval(async () => {
   const connection = await pool.getConnection();
   try {
@@ -145,8 +145,8 @@ setInterval(async () => {
       );
 
       try {
-        await axios.get("http://ml:5000/motor/move", {
-          params: { from: pool_number, to: 5 }, // kurutma alanı
+        await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
+          params: { from: pool_number, to: 5 },
         });
         console.log(`Motor boşaltma tetiklendi (pool ${pool_number} → 5)`);
       } catch (motorError) {
@@ -203,7 +203,7 @@ setInterval(async () => {
         ]);
 
         try {
-          await axios.get("http://ml:5000/motor/move", {
+          await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
             params: { from: 0, to: pool_number },
           });
           console.log(`Motor sıradaki ürün için çalıştı: 0 → ${pool_number}`);
