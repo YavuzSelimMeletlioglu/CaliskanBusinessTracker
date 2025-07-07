@@ -43,9 +43,12 @@ pool_router.post("/assign-to-pool", async (req, res) => {
 
     // Motoru çağır
     try {
-      await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
-        params: { from: 0, to: pool_number },
-      });
+      await axios.get(
+        `http://${process.env.MOTORIP}:${process.env.MOTORPORT}/motor/move`,
+        {
+          params: { from: 0, to: pool_number },
+        }
+      );
     } catch (motorError) {
       console.error(`Motor hatası (assign-to-pool):`, motorError.message);
     }
@@ -63,7 +66,7 @@ pool_router.post("/assign-to-pool", async (req, res) => {
 pool_router.post("/release-pool", async (req, res) => {
   try {
     const { pool_number } = req.body;
-
+    console.log("Ürünler taşınıyor ", pool_number);
     if (!pool_number) {
       return res
         .status(400)
@@ -78,9 +81,12 @@ pool_router.post("/release-pool", async (req, res) => {
     );
 
     try {
-      await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
-        params: { from: pool_number, to: 5 }, // 5 = kurutma bölgesi
-      });
+      await axios.get(
+        `http://${process.env.MOTORIP}:${process.env.MOTORPORT}/motor/move`,
+        {
+          params: { from: pool_number, to: 5 },
+        }
+      );
     } catch (motorError) {
       console.error(`Motor hatası (release-pool):`, motorError.message);
     }
@@ -121,6 +127,52 @@ pool_router.get("/empty-pool", async (req, res) => {
   }
 });
 
+pool_router.post("/redip-product", async (req, res) => {
+  try {
+    const { pool_number } = req.body;
+    console.log("Ürünler tekrar daldırıldı ", pool_number);
+
+    if (!pool_number) {
+      return res.status(400).json({
+        success: false,
+        message: "pool_number gerekli!",
+      });
+    }
+
+    await pool.query(
+      `UPDATE acid_bath 
+       SET remaining_time = remaining_time + 60, 
+           updated_at = NOW()
+       WHERE pool_number = ?`,
+      [pool_number]
+    );
+
+    try {
+      await axios.get(
+        `http://${process.env.MOTORIP}:${process.env.MOTORPORT}/motor/dip`,
+        {
+          params: { pool_number: pool_number },
+        }
+      );
+    } catch (motorError) {
+      console.error(`Motor hatası:`, motorError.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Pool ${pool_number} - Ürün tekrar batırıldı (+1dk)`,
+      pool_number: pool_number,
+      added_time: 60,
+    });
+  } catch (error) {
+    console.error("Tekrar batırma hatası:", error);
+    res.status(500).json({
+      success: false,
+      message: "Sunucu hatası!",
+    });
+  }
+});
+
 setInterval(async () => {
   const connection = await pool.getConnection();
   try {
@@ -133,30 +185,20 @@ setInterval(async () => {
     for (const pool of expired) {
       const { pool_number } = pool;
 
-      await connection.query(
-        `
-        UPDATE acid_bath
-        SET company_id = NULL, product_id = NULL,
-            bath_time = NULL, remaining_time = NULL,
-            is_active = FALSE, updated_at = NOW()
-        WHERE pool_number = ?
-      `,
-        [pool_number]
-      );
-
       try {
-        await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
-          params: { from: pool_number, to: 5 },
-        });
-        console.log(`Motor boşaltma tetiklendi (pool ${pool_number} → 5)`);
+        await axios.get(
+          `http://${process.env.MOTORIP}:${process.env.MOTORPORT}/motor/lift`,
+          {
+            params: { pool_number: pool_number },
+          }
+        );
+        console.log(`Ürün kaldırma tetiklendi (pool ${pool_number})`);
       } catch (motorError) {
         console.error(
-          `Motor boşaltma hatası (pool ${pool_number}):`,
+          `Ürün kaldırma hatası (pool ${pool_number}):`,
           motorError.message
         );
       }
-
-      console.log(`Pool ${pool_number} otomatik boşaltıldı.`);
     }
 
     // 2. Aktif havuz süresini azalt
@@ -203,9 +245,12 @@ setInterval(async () => {
         ]);
 
         try {
-          await axios.get(`http://ml:${process.env.MLPORT}/motor/move`, {
-            params: { from: 0, to: pool_number },
-          });
+          await axios.get(
+            `http://${process.env.MOTORIP}:${process.env.MOTORPORT}/motor/move`,
+            {
+              params: { from: 0, to: pool_number },
+            }
+          );
           console.log(`Motor sıradaki ürün için çalıştı: 0 → ${pool_number}`);
         } catch (motorError) {
           console.error(

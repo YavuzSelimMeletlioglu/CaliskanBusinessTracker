@@ -15,8 +15,8 @@ class Config:
     FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
     FLASK_PORT = int(os.getenv('FLASK_PORT', 5000))
     
-    MODEL_PATH = os.getenv('MODEL_PATH', './models/duration_model.pkl')
-    MIN_TRAINING_DATA = int(os.getenv('MIN_TRAINING_DATA', 5))
+    DURATION_MODEL_PATH = os.getenv('DURATION_MODEL_PATH', './models/duration_model.pkl')
+    CLASSIFIER_MODEL_PATH = os.getenv('CLASSIFIER_MODEL_PATH', './models/rust_classifier.pkl')
     
     @property
     def DB_CONFIG(self):
@@ -29,7 +29,5 @@ class Config:
             'port': self.DB_PORT
         }
     
-    def __repr__(self):
-        return f"<Config DB={self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}>"
 
 config = Config()

@@ -1,62 +1,40 @@
-from flask import Flask
+import os
+from flask import Flask, jsonify
 from config import config
-
-"""
-# Blueprintleri import et
-try:
-    from motor import motor_bp
-    print("✓ motor_bp başarıyla import edildi")
-except ImportError as e:
-    print(f"✗ motor_bp import hatası: {e}")
-    motor_bp = None
-"""
+from flask_cors import CORS
 
 try:
     from ml import ml_bp
-    print("✓ ml_bp başarıyla import edildi")
+    print("✅ ml blueprint yüklendi")
 except ImportError as e:
-    print(f"✗ ml_bp import hatası: {e}")
+    print(f"⚠️ ml blueprint yüklenemedi: {e}")
     ml_bp = None
 
+try:
+    from rust_classifier import rust_bp
+    print("✅ rust_classifier blueprint yüklendi")
+except ImportError as e:
+    print(f"⚠️ rust_classifier blueprint yüklenemedi: {e}")
+    rust_bp = None
+
+# Flask app oluştur
 app = Flask(__name__)
 
-"""
+# CORS'u app seviyesinde tanımla (Gunicorn için önemli)
+CORS(app, origins='*')
+
 # Blueprint'leri kaydet
-if motor_bp:
-    app.register_blueprint(motor_bp, url_prefix='/motor')
-    print("✓ motor_bp blueprint kaydedildi")
-"""
 if ml_bp:
     app.register_blueprint(ml_bp, url_prefix='/ml')
-    print("✓ ml_bp blueprint kaydedildi")
+    print("✅ ml blueprint kaydedildi: /ml/*")
 
-# Ana route
-@app.route('/')
-def hello():
-    return {
-        'message': 'Flask uygulaması çalışıyor!',
-        'environment': config.FLASK_ENV,
-        'blueprints': list(app.blueprints.keys())
-    }
-
-# Health check
-@app.route('/health')
-def health():
-    return {
-        'status': 'healthy',
-        'environment': config.FLASK_ENV,
-        'debug': config.FLASK_DEBUG
-    }
+if rust_bp:
+    app.register_blueprint(rust_bp, url_prefix='/rust')
+    print("✅ rust blueprint kaydedildi: /rust/*")
 
 if __name__ == '__main__':
-    print(f"🚀 Flask uygulaması başlatılıyor...")
-    print(f"📍 Host: {config.FLASK_HOST}:{config.FLASK_PORT}")
-    print(f"🗄️  Database: {config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}")
-    print(f"📁 Model Path: {config.MODEL_PATH}")
-    print(f"📝 Kayıtlı Blueprint'ler: {list(app.blueprints.keys())}")
-    
     app.run(
-        host=config.FLASK_HOST, 
-        port=config.FLASK_PORT, 
-        debug=config.FLASK_DEBUG
+        debug=os.getenv('DEBUG', True),
+        host=getattr(config, 'FLASK_HOST', '0.0.0.0'), 
+        port=getattr(config, 'FLASK_PORT', 5001)
     )

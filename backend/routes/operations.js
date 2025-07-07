@@ -124,7 +124,11 @@ operation_router.post("/processes", async (req, res) => {
     );
 
     const predicted_duration = Math.round(response.data.predicted_duration);
-
+    axios.post(`http://localhost:${process.env.PORT}/pools/assign-to-pool`, {
+      company_id,
+      product_id,
+      bath_time: predicted_duration,
+    });
     await pool.query(
       `UPDATE performance_logs
        SET acid_pool_time_minutes = ?

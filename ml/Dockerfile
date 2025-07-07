@@ -23,8 +23,10 @@ RUN pip install --no-cache-dir \
     scikit-learn \
     pandas \
     gunicorn \
-    python-dotenv
+    python-dotenv \
+    flask-cors \
+    requests
 
 EXPOSE 5001
 
-CMD ["gunicorn", "-b", "0.0.0.0:5001", "app:app"]
+CMD ["gunicorn", "--reload", "-b", "0.0.0.0:5001", "app:app"]

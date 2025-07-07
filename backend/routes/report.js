@@ -30,7 +30,7 @@ const generateChartImage = async ({ labels, values, title }) => {
   return await chart.toBinary();
 };
 
-report_router.post("/send-multi-company-report", async (req, res) => {
+report_router.post("/send-company-report", async (req, res) => {
   const { email, endpoint_type } = req.body;
 
   if (!email || !endpoint_type) {
