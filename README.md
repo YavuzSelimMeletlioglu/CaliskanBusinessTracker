@@ -112,7 +112,7 @@ Sistem, bir Node.js REST API'si, Python/Flask tabanlı makine öğrenimi servisi
 |--------|---------|
 | 1 | Owner (Sahip) |
 | 2 | Admin |
-| 3 | Steelyard Responsible (Kantarcu) |
+| 3 | Steelyard Responsible (Kantarcı) |
 | 4 | Worker (İşçi) |
 
 ---
@@ -308,18 +308,6 @@ python motor.py
 | `GET` | `/motor/lift?pool_number=X` | Havuzdan ürün kaldır + fotoğraf çek |
 | `GET` | `/motor/dip` | Ürünü havuza daldır |
 | `GET` | `/motor/home` | Ana pozisyona dön (0. havuz) |
-
----
-
-### 🤝 Katkıda Bulunma
-
-1. Repoyu fork'layın
-2. Feature branch'i oluşturun: `git checkout -b feature/yeni-ozellik`
-3. Değişikliklerinizi commit'leyin: `git commit -m 'feat: yeni özellik eklendi'`
-4. Branch'i push'layın: `git push origin feature/yeni-ozellik`
-5. Pull Request açın
-
----
 
 ---
 
@@ -614,18 +602,6 @@ python motor.py
 | `GET` | `/motor/lift?pool_number=X` | Lift product from pool + capture photo |
 | `GET` | `/motor/dip` | Dip product into pool |
 | `GET` | `/motor/home` | Return to home position (pool 0) |
-
----
-
-### 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit your changes: `git commit -m 'feat: added new feature'`
-4. Push the branch: `git push origin feature/new-feature`
-5. Open a Pull Request
-
----
 
 <p align="center">
   Made with ❤️ by <strong>Yavuz Selim Meletlioğlu</strong>
